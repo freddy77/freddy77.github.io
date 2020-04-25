@@ -1,0 +1,70 @@
+---
+layout: post
+title:  "Emulated s390x"
+date:   2020-04-25 15:26:22 +0100
+---
+
+Some days ago I wanted to fix a bug addressing an issue with S390x.
+
+I suspected an endianness issue of some sort.
+
+Today big endian machines are getting hard to find, even Power is
+moving to little endian. Some platform which are still big endian are
+MIPS and s390x. I had an installed emulated MIPS machine but I wanted
+to try to install a s390x machine due to some issue with the MIPS one:
+1. it's difficult to update, it's still bases on some old Malta
+   machine;
+2. it's pretty slow. I'm not able to enable multiple processors and
+   also Qemu user space stopped working (it crashes) from some time
+   so compiling software is terribly slow;
+3. the maximum amount of ram is low and this makes compilations even
+   slower;
+4. the machine is launched manually, I wanted to use virt-manager
+   and libvirt instead, easier to manage.
+
+There is an emulator called Hercules which seems quite used and
+complete but from what I read it's not easy to setup and not that fast
+(probably offers a good emulation compromising speed).
+
+I read quite some articles here and there, lot configuring disks and
+multiple files (see [1] for instance).
+After multiple attempts (which considering the speed of machine having
+to emulate the CPU took some time) I manage to install an Ubuntu VM
+(nothing specifically in favour but it was the first that works
+without much efforts).
+
+So:
+1. download Ubuntu server for s390x (filename was
+   `ubuntu-18.04.4-server-s390x.iso`);
+2. install `qemu-system-s390x` package;
+3. open virt-manager;
+4. create a s390x machine passing the downloaded ISO image (I used a
+   new disk of 20 GB, default, 1 CPU only for the installation);
+5. start installation;
+6. at some point it will ask if you want to continue using console or
+   a SSH connection. I chose the SSH;
+7. connect with SSH to the VM and finish installation (I chose to
+   install SSH server and basic server only). 
+
+Fine machine was working, managed by virt-manager, pretty new
+software, no problem with memory (assigned 3gb) so I solved the issues
+1, 3 and 4 I had with the MIPS VM.
+For the issue 2 I changed from virt-manager the number of CPUs to 4
+but trying load the VM the host CPU usage was only about 100% meaning
+no multiple CPUs on the host are used.
+
+To fix issue 2:
+1. launch a `virtsh edit <vm-name>`;
+2. change `domain` opening tag to `<domain type='qemu'
+   xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>`;
+3. add, at the end, inside `domain` tag:
+{% highlight xml %}
+  <qemu:commandline>
+    <qemu:arg value='-accel'/>
+    <qemu:arg value='accel=tcg,thread=multi'/>
+  </qemu:commandline>
+{% endhighlight %}
+
+Now the VM is using more power and compilation time is reduced.
+
+[1]: https://astr0baby.wordpress.com/2018/06/03/installing-ubuntu-18-04-server-s390x-in-hercules-mainframe-simulator/
