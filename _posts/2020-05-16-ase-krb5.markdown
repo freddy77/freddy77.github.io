@@ -1,0 +1,58 @@
+---
+layout: post
+title:  "ASE 16 and Kerberos"
+date:   2020-05-16 08:18:45 +0100
+---
+
+I follow and manage www.freetds.org project. The project provided open
+source drivers for Microsoft SQL Server and Sybase ASE servers (they
+use the same family of network protocol).
+
+Both supports kerberos authentication but this is currently lacking in FreeTDS.
+One guy helped me providing the setup and testing my patches but for
+future testing and to be a bit independent I decided to setup ASE with
+kerberos on my test environment.
+
+## Kerberos server
+
+If you have a VM is probably a good time for a snapshot.
+
+I use an Ubuntu 18.04 LTS so I found this article [Ubuntu krb5].
+
+Some changes I made:
+1. I use the same machine as server and client, not a production
+   recommendation but fine for testing. Most of the steps to configure
+   the client are not necessary (only install the packages);
+2. I tested just doing a `kinit test@DOMAIN.IO` (`test` is a principal
+   I created);
+3. If you have a `krb5.conf` file already (it was my case) make sure
+   to set the domain you are configuring *BEFORE* installing the
+   packages, otherwise you'll have to do some more manual
+   configuration.
+
+## Setting Sybase server
+
+I mainly followed this article [Sybase krb5].
+
+The principal name for the server has to be the same of the section
+name in the `interfaces` file (point 2).
+
+To export the keytab I followed [keytab], specifically the command
+`xst -k <FILENAME> <SERVER_NAME>@<KRB5_DOMAIN>` (point 3).
+
+If you are using a 64 bit version (you should), use `libsybskrb64.so`
+and edit `libtcl64.cfg` file (point 6). To find the right shared
+object name I used a `find /usr/ -name libgssapi_krb5.so\*`.
+
+To use `isql` utility use `isql_r64` command, `isql64` did not work
+for me due to some missing symbol. Also, other than `SYBASE`
+environment (in my case `/opt/sybase16`) you have to set `SYBASE_OCS`
+(in my case `OCS-16_0`, name of directory in `$SYBASE`) otherwise
+`iql_r64` won't attempt to use kerberos.
+
+I hope these notes could help some other people, some issues took
+some time to fix.
+
+[Ubuntu krb5]: https://www.howtoforge.com/how-to-setup-kerberos-server-and-client-on-ubuntu-1804-lts/
+[Sybase krb5]: http://infocenter.sybase.com/help/index.jsp?topic=/com.sybase.infocenter.dc31654.1550/html/sag1/sag1768.htm
+[keytab]: https://docs.cloudera.com/documentation/enterprise/5-5-x/topics/cdh_sg_kadmin_kerberos_keytab.html
